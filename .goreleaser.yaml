@@ -1,0 +1,58 @@
+project_name: home-assistant-grafana-relay
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - binary: "{{ .ProjectName }}"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+dockers:
+  - id: linux/amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "robertyoung/{{ .ProjectName }}:latest"
+      - "robertyoung/{{ .ProjectName }}:{{ .Tag }}"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/RobertYoung/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/RobertYoung/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+  - id: linux/arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "robertyoung/{{ .ProjectName }}:latest-arm64"
+      - "robertyoung/{{ .ProjectName }}:{{ .Tag }}-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/RobertYoung/{{ .ProjectName }}
+      - --label=org.opencontainers.image.source=https://github.com/RobertYoung/{{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

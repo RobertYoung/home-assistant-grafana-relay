@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/RobertYoung/home-assistant-grafana-relay/compare/v1.1.0...v1.2.0) (2022-10-16)
+
+
+### Features
+
+* adds env vars option ([57f82fc](https://github.com/RobertYoung/home-assistant-grafana-relay/commit/57f82fcd3fc20dffdd97a66e1a97858ba2d76da6))
+
 ## [1.1.0](https://github.com/RobertYoung/home-assistant-grafana-relay/compare/v1.0.0...v1.1.0) (2022-10-16)
 
 

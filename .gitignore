@@ -57,3 +57,4 @@ cscope.po.out
 
 home-assistant-grafana-relay
 dist
+env.yml

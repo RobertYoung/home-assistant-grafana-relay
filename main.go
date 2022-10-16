@@ -3,31 +3,32 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"io"
+
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v2/altsrc"
 )
 
 // Long-lived access token from home-assistant
-var AUTH_TOKEN string
+var HAAS_TOKEN string
 
 // Home-assistant api uri
-var HM_SERVICE_URI string
+var HAAS_URL string
+
+// Device in home assisant to send the notification to
+var HAAS_NOTIFY_DEVICE string
 
 // Port to listen for webhooks from grafana
 var LISTEN_PORT string
 
 // Host/ip to listen for webhooks from grafana
 var LISTEN_HOST string
-
-func init() {
-	AUTH_TOKEN = os.Getenv("AUTH_TOKEN")
-	HM_SERVICE_URI = os.Getenv("HM_SERVICE_URI")
-	LISTEN_PORT = os.Getenv("LISTEN_PORT")
-	LISTEN_HOST = os.Getenv("LISTEN_HOST")
-}
 
 type GrafanaJson struct {
 	Title       string   `json:"title"`
@@ -52,7 +53,7 @@ func receiveHook(rw http.ResponseWriter, req *http.Request) {
 
 	// Parse webhook data
 	var j GrafanaJson
-	body, _ := ioutil.ReadAll(req.Body)
+	body, _ := io.ReadAll(req.Body)
 	json.Unmarshal(body, &j)
 
 	// send notification
@@ -79,13 +80,13 @@ func notify(hookData GrafanaJson) {
 		Timeout: time.Duration(5 * time.Second),
 	}
 
-	request, err := http.NewRequest("POST", HM_SERVICE_URI, bytes.NewBuffer(postBody))
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/api/services/notify/%s", HAAS_URL, HAAS_NOTIFY_DEVICE), bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "Bearer "+AUTH_TOKEN)
+	request.Header.Set("Authorization", "Bearer "+HAAS_TOKEN)
 
 	// Don't care about the response
 	_, err = client.Do(request)
@@ -95,9 +96,63 @@ func notify(hookData GrafanaJson) {
 }
 
 func main() {
+	flags := []cli.Flag{
+		&cli.StringFlag{Name: "env-file"},
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:     "port",
+			Usage:    "port to listen on",
+			Aliases:  []string{"p"},
+			Value:    "80",
+			Required: false,
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:     "host",
+			Usage:    "host to listen on",
+			Aliases:  []string{"ho"},
+			Value:    "localhost",
+			Required: false,
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:     "haas-token",
+			Usage:    "token for home assistant to authenticate to the api",
+			Aliases:  []string{"ht"},
+			Required: false,
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:     "haas-url",
+			Usage:    "url for home assistant",
+			Aliases:  []string{"url"},
+			Required: false,
+		}),
+		altsrc.NewStringFlag(&cli.StringFlag{
+			Name:     "haas-notify-device",
+			Usage:    "device in home assistant to send the notification to",
+			Aliases:  []string{"hnd"},
+			Required: false,
+		}),
+	}
+	app := &cli.App{
+		Name:                   "home-assistant-grafana-relay",
+		Usage:                  "listens for grafana notifications and relays to home assistant",
+		UseShortOptionHandling: true,
+		Flags:                  flags,
+		Before:                 altsrc.InitInputSourceWithContext(flags, altsrc.NewYamlSourceFromFlagFunc("env-file")),
+		Action: func(cCtx *cli.Context) error {
+			LISTEN_HOST = cCtx.String("host")
+			LISTEN_PORT = cCtx.String("port")
+			HAAS_URL = cCtx.String("haas-url")
+			HAAS_TOKEN = cCtx.String("haas-token")
+			HAAS_NOTIFY_DEVICE = cCtx.String("haas-notify-device")
 
-	log.Println("Listening for webooks on: " + LISTEN_HOST + ":" + LISTEN_PORT)
-	log.Println("Using home-assistant at: " + HM_SERVICE_URI)
-	http.HandleFunc("/", receiveHook)
-	log.Fatal(http.ListenAndServe(LISTEN_HOST+":"+LISTEN_PORT, nil))
+			log.Println("Listening for webooks on: " + LISTEN_HOST + ":" + LISTEN_PORT)
+			log.Println("Using home-assistant at: " + HAAS_URL)
+			http.HandleFunc("/", receiveHook)
+			log.Fatal(http.ListenAndServe(LISTEN_HOST+":"+LISTEN_PORT, nil))
+			return nil
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -16,19 +16,19 @@ import (
 )
 
 // Long-lived access token from home-assistant
-var HAAS_TOKEN string
+var TOKEN string
 
 // Home-assistant api uri
-var HAAS_URL string
+var URL string
 
 // Device in home assisant to send the notification to
-var HAAS_NOTIFY_DEVICE string
+var DEVICE string
 
 // Port to listen for webhooks from grafana
-var LISTEN_PORT string
+var PORT string
 
 // Host/ip to listen for webhooks from grafana
-var LISTEN_HOST string
+var HOST string
 
 type GrafanaJson struct {
 	Title       string   `json:"title"`
@@ -80,13 +80,13 @@ func notify(hookData GrafanaJson) {
 		Timeout: time.Duration(5 * time.Second),
 	}
 
-	request, err := http.NewRequest("POST", fmt.Sprintf("%s/api/services/notify/%s", HAAS_URL, HAAS_NOTIFY_DEVICE), bytes.NewBuffer(postBody))
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/api/services/notify/%s", URL, DEVICE), bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "Bearer "+HAAS_TOKEN)
+	request.Header.Set("Authorization", "Bearer "+TOKEN)
 
 	// Don't care about the response
 	_, err = client.Do(request)
@@ -104,6 +104,7 @@ func main() {
 			Aliases:  []string{"p"},
 			Value:    "80",
 			Required: false,
+			EnvVars:  []string{"PORT"},
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
 			Name:     "host",
@@ -111,24 +112,25 @@ func main() {
 			Aliases:  []string{"ho"},
 			Value:    "localhost",
 			Required: false,
+			EnvVars:  []string{"HOST"},
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:     "haas-token",
+			Name:     "token",
 			Usage:    "token for home assistant to authenticate to the api",
-			Aliases:  []string{"ht"},
 			Required: false,
+			EnvVars:  []string{"TOKEN"},
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:     "haas-url",
+			Name:     "url",
 			Usage:    "url for home assistant",
-			Aliases:  []string{"url"},
 			Required: false,
+			EnvVars:  []string{"URL"},
 		}),
 		altsrc.NewStringFlag(&cli.StringFlag{
-			Name:     "haas-notify-device",
+			Name:     "device",
 			Usage:    "device in home assistant to send the notification to",
-			Aliases:  []string{"hnd"},
 			Required: false,
+			EnvVars:  []string{"DEVICE"},
 		}),
 	}
 	app := &cli.App{
@@ -138,16 +140,16 @@ func main() {
 		Flags:                  flags,
 		Before:                 altsrc.InitInputSourceWithContext(flags, altsrc.NewYamlSourceFromFlagFunc("env-file")),
 		Action: func(cCtx *cli.Context) error {
-			LISTEN_HOST = cCtx.String("host")
-			LISTEN_PORT = cCtx.String("port")
-			HAAS_URL = cCtx.String("haas-url")
-			HAAS_TOKEN = cCtx.String("haas-token")
-			HAAS_NOTIFY_DEVICE = cCtx.String("haas-notify-device")
+			HOST = cCtx.String("host")
+			PORT = cCtx.String("port")
+			URL = cCtx.String("url")
+			TOKEN = cCtx.String("token")
+			DEVICE = cCtx.String("device")
 
-			log.Println("Listening for webooks on: " + LISTEN_HOST + ":" + LISTEN_PORT)
-			log.Println("Using home-assistant at: " + HAAS_URL)
+			log.Println("Listening for webooks on: " + HOST + ":" + PORT)
+			log.Println("Using home-assistant at: " + URL)
 			http.HandleFunc("/", receiveHook)
-			log.Fatal(http.ListenAndServe(LISTEN_HOST+":"+LISTEN_PORT, nil))
+			log.Fatal(http.ListenAndServe(HOST+":"+PORT, nil))
 			return nil
 		},
 	}

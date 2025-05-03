@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/RobertYoung/home-assistant-grafana-relay/compare/v1.2.0...v1.3.0) (2025-05-03)
+
+
+### Features
+
+* use alpine as the base docker image ([78ae6d3](https://github.com/RobertYoung/home-assistant-grafana-relay/commit/78ae6d37b3b63ae99878905b9901c6a25f825ce1))
+
 ## [1.2.0](https://github.com/RobertYoung/home-assistant-grafana-relay/compare/v1.1.0...v1.2.0) (2022-10-16)
 
 
